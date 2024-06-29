@@ -1,5 +1,5 @@
-<p style="font-size: 20px;">INTRODUCTION</p>
-<p style="font-size: 20px;">This text is larger using HTML.</p>
+<p style="font-size: 20px;"><strong>INTRODUCTION</strong></p>
+
 
 
 This study aimed to explore the feasibility and effectiveness of wearable devices in detecting early physiological changes that precede the onset of prediabetes.
