@@ -1,6 +1,6 @@
 
-#### **INTRODUCTION**
-#### **Create a custom function that reads the CSV file, extracts the headers, and dynamically creates a temporary table for the data**
+### **INTRODUCTION**
+### **Create a custom function that reads the CSV file, extracts the headers, and dynamically creates a temporary table for the data**
 
 CREATE OR REPLACE FUNCTION load_csv_file(target_table text, csv_path text, col_count integer) RETURNS void AS $BODY$
 DECLARE
