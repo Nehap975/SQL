@@ -1,0 +1,132 @@
+--Create "demograhics" table by importing data from "maternal_health"(main table)
+create table if not exists demographics as
+select "﻿case_id",age_years_old,color_ethnicity, hight_at_inclusion, bmi_according_who, 
+prepregnant_weight,prepregnant_bmi,number_prenatal_appointments
+from public.maternal_health;
+----------------------------------------------------------
+--Add a primary key constraint to column "case_id" in demographics table
+alter table public.demographics add primary key("﻿case_id" );
+--Fetch all the columns from "demograhics" table
+select * from demographics;
+-------------------------------------------------------------------------------------------
+
+--Create "lab_readings" table by importing data from "maternal_health" table(main table)
+create table if not exists lab_readings as
+select "﻿case_id", maternal_weight_at_inclusion, gestational_age_at_inclusion, 
+fetal_weight_at_ultrasound,weight_fetal_percentile, right_systolic_blood_pressure, 
+right_diastolic_blood_pressure, left_systolic_blood_pressure,left_diastolic_blood_pressure,
+first_trimester_hematocrit, second_trimester_hematocrit,third_trimester_hematocrit, 
+firt_trimester_hemoglobin, second_trimester_hemoglobin,third_trimester_hemoglobin, 
+first_tri_fasting_blood_glucose, second_tri_fasting_blood_glucose,
+third_tri_fasting_blood_glucose,"1st_hour_ogtt75_1st_tri", 
+"1st_hour_ogtt75_2tri","1st_hour_ogtt75_3tri",
+"2nd_hour_ogtt_1tri", "2nd_hour_ogtt75_2tri","2nd_hour_ogtt_3tri", 
+hiv_1tri, syphilis_1tri, c_hepatitis_1tri
+from public.maternal_health;
+------------------------------------------------------------------------------------------
+--Add a foreign key constraint to lab_readings table, 
+--to show relationship between demographics and lab_readings table.
+alter table public.lab_readings add constraint fk_labs
+			foreign key ("﻿case_id") REFERENCES public.demographics("﻿case_id");
+--Fetch all the columns from "lab_readings" table
+select * from lab_readings;
+-------------------------------------------------------------------------------------------
+
+--Create "pregnancy_history" table by importing data from "maternal_health"(main table)
+create table if not exists pregnancy_history as
+select "﻿case_id", past_pregnancies_number,miscarriage,past_newborn_1_weight,
+gestational_age_past_newborn_1,past_newborn_2_weight,gestational_age_past_newborn_2,
+past_newborn_3_weight,gestational_age_past_newborn_3,past_newborn_4_weight,
+gestational_age_past_4_newborn
+from public.maternal_health;
+------------------------------------------------------------------------------------------
+--Add a foreign key constraint to pregnancy_history  table, 
+--to show relationship between demographics and pregnancy_history table.
+alter table public.pregnancy_history add constraint fk_pghistory
+				foreign key ("﻿case_id") REFERENCES public.demographics("﻿case_id");
+--Fetch all the columns from "pregnancy_history" table
+select * from pregnancy_history;
+------------------------------------------------------------------------------------------
+
+--Create "patient_history" table by importing data from "maternal_health"(main table)
+create table if not exists patient_history as
+select "﻿case_id",hypertension_past_reported,hypertension_past_treatment,
+diabetes_mellitus_dm_reported,diabetes_mellitus_disease_gap,diabetes_mellitus_treatment,
+tobacco_use,tobacco_use_in_months,tobacco_quantity_by_day,alcohol_use,
+alcohol_quantity_milliliters,alcohol_preference,drugs_preference,drugs_years_use,
+drugs_during_pregnancy,treatment_disease_pregnancy,chronic_diabetes,chronic_diseases
+from public.maternal_health;
+------------------------------------------------------------------------------------------
+--Add a foreign key constraint to patient_history  table, 
+--to show relationship between demographics and patient_history table.
+alter table public.patient_history add constraint fk_patienthistory
+				foreign key ("﻿case_id") REFERENCES public.demographics("﻿case_id");				
+--Fetch all the columns from "patient_medical_history" table
+select * from patient_history;
+------------------------------------------------------------------------------------------
+
+--Create "nutrition" table by importing data from "maternal_health"(main table)
+create table if not exists nutrition as
+select "﻿case_id",breakfast_meal,morning_snack,lunch_meal,afternoon_snack,meal_dinner,
+supper_meal,bean,fruits,vegetables,embedded_food,pasta,cookies
+from public.maternal_health;
+-----------------------------------------------------------------------------------------
+--Add a foreign key constraint to nutrition table, 
+--to show relationship between demographics and nutrition table.
+alter table public.nutrition add constraint fk_nutrition
+				foreign key ("﻿case_id") REFERENCES public.demographics("﻿case_id");
+--Fetch all the columns from "nutrition" table
+select * from nutrition;
+-----------------------------------------------------------------------------------------
+
+--Create "maternal_fat_assessment" table by importing data from "maternal_health"(main table)
+create table if not exists maternal_fat_assessment as
+select "﻿case_id",periumbilical_subcutanous_fat,periumbilical_visceral_fat,
+periumbilical_total_fat,preperitoneal_subcutaneous_fat,preperitoneal_visceral_fat,
+current_bmi,current_bmi_according_who,maternal_brachial_circumference,
+circumference_maternal_calf,maternal_neck_circumference,maternal_hip_circumference,
+maternal_waist_circumference,mean_tricciptal_skinfold,mean_subscapular_skinfold,
+mean_supra_iliac_skin_fold,current_maternal_weight_1st_tri,current_maternal_weight_2nd_tri,
+current_maternal_weight_3rd_tri
+from public.maternal_health;
+------------------------------------------------------------------------------------------
+--Add a foreign key constraint to maternal_fat_assessment table, 
+--to show relationship between demographics and maternal_fat_assessment table.
+alter table public.maternal_fat_assessment add constraint fk_maternalfat
+				foreign key ("﻿case_id") REFERENCES public.demographics("﻿case_id");
+--Fetch all the columns from "maternal_fat_assessment" table
+select * from maternal_fat_assessment;
+------------------------------------------------------------------------------------------
+
+--Create "labor_room_evaluation" table by importing data from "maternal_health"(main table)
+create table if not exists labor_room_evaluation as
+select "﻿case_id",gestational_age_at_birth,prepartum_maternal_weight,prepartum_maternal_heigh,
+cesarean_section_reason,hospital_systolic_blood_pressure,hospital_diastolic_blood_pressure,
+hospital_hypertension,preeclampsia_record_pregnancy,gestational_diabetes_mellitus,
+disease_diagnose_during_pregnancy,treatment_disease_pregnancy,ultrasound_gestational_age,
+expected_weight_for_the_newborn,delivery_mode,mothers_hospital_stay
+from public.maternal_health;
+-------------------------------------------------------------------------------------------
+--Add a foreign key constraint to labor_room_evaluation table, 
+--to show relationship between demographics and labor_room_evaluation table.
+alter table public.labor_room_evaluation add constraint fk_laborroom
+				foreign key ("﻿case_id") REFERENCES public.demographics("﻿case_id");				
+--Fetch all the columns from "labor_room_evaluation" table
+select * from labor_room_evaluation;
+-------------------------------------------------------------------------------------------
+
+--Create "newborn_details" table by importing data from "maternal_health"(main table)
+create table if not exists newborn_details as
+select "﻿case_id",newborn_weight,newborn_height,newborn_head_circumference,
+thoracic_perimeter_newborn,meconium_labor,apgar_1st_min,apgar_5th_min,
+pediatric_resuscitation_maneuvers,newborn_intubation,newborn_airway_aspiration
+from public.maternal_health;
+-------------------------------------------------------------------------------------------
+--Add a foreign key constraint to newborn_details table, 
+--to show relationship between demographics and newborn_details table.
+alter table public.newborn_details add constraint fk_newborn
+				foreign key ("﻿case_id") REFERENCES public.demographics("﻿case_id");				
+--Fetch all the columns from "newborn_details" table
+select * from newborn_details;
+-------------------------------------------------------------------------------------------
+
