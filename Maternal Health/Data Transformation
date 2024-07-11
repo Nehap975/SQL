@@ -1,0 +1,1210 @@
+--#####################################################################################
+--------DATA TRANSFORMATION STEPS FOR "demographics" TABLE----------------
+--#####################################################################################
+
+create table if not exists demographics as
+select "﻿case_id", age_years_old, color_ethnicity, maternal_weight_at_inclusion, hight_at_inclusion, current_bmi, 
+current_bmi_according_who, bmi_according_who, prepregnant_weight, prepregnant_bmi, number_prenatal_appointments
+from public.maternal_health;
+
+select * from public.demographics;
+
+--Rename the Column name from hight_at_inclusion to height_at_inclusion
+Alter Table demographics
+Rename Column hight_at_inclusion to height_at_inclusion;
+
+--Update values of field with "No Answer" or "not_applicable
+UPDATE public.demographics
+SET prepregnant_weight = NULLIF(prepregnant_weight, 'no_answer')
+WHERE prepregnant_weight = 'no_answer';
+
+UPDATE public.demographics
+SET prepregnant_bmi = NULLIF(prepregnant_bmi, 'not_applicable')
+WHERE prepregnant_bmi = 'not_applicable';
+
+Update public.demographics
+Set bmi_according_who = NULLIF(bmi_according_who, 'not_applicable')
+WHERE bmi_according_who = 'not_applicable';
+
+--Replace Blanks with NULLS for following columns
+UPDATE public.demographics
+SET prepregnant_weight = NULLIF(prepregnant_weight, '')
+WHERE prepregnant_weight = '';
+
+UPDATE public.demographics
+SET bmi_according_who = NULLIF(bmi_according_who, '')
+WHERE bmi_according_who = '';
+
+UPDATE public.demographics
+SET prepregnant_bmi = NULLIF(prepregnant_bmi, '')
+WHERE prepregnant_bmi = '';
+
+--Change datatype for below column
+alter table public.demographics
+	alter column "﻿case_id" type integer USING "﻿case_id"::integer,
+	alter column age_years_old type smallint USING age_years_old::smallint,
+	alter column maternal_weight_at_inclusion type numeric(5,2) USING maternal_weight_at_inclusion::numeric(5,2),
+	alter column height_at_inclusion type numeric USING height_at_inclusion::numeric,
+	alter column prepregnant_weight type numeric(5,2) USING prepregnant_weight::numeric(5,2),
+	alter column prepregnant_bmi type numeric USING prepregnant_bmi::numeric,
+	alter column number_prenatal_appointments type smallint USING number_prenatal_appointments::smallint,
+	alter column current_bmi type numeric USING current_bmi::numeric,
+	alter column bmi_according_who type smallint USING bmi_according_who::smallint,
+	alter column current_bmi_according_who type smallint USING current_bmi_according_who::smallint;
+
+--Replace values in color_ethnicity column
+UPDATE public.demographics
+SET color_ethnicity = 
+ CASE 
+        WHEN color_ethnicity = '0' THEN 'White'
+        WHEN color_ethnicity = '1' THEN 'Black'
+        WHEN color_ethnicity = '2' THEN 'Brown'
+        WHEN color_ethnicity = '3' THEN 'Asian'
+        ELSE Null
+    END;
+
+--update NULL value with appropriate calculated value in the column:maternal_weight_at_inclusion
+UPDATE public.demographics
+	SET maternal_weight_at_inclusion =
+		CASE 
+	 		WHEN maternal_weight_at_inclusion IS NULL 
+	 			THEN  current_bmi * POWER(height_at_inclusion, 2)
+	        ELSE maternal_weight_at_inclusion
+	    END;
+	
+--replace values in column: bmi_according_who
+UPDATE public.demographics
+SET bmi_according_who = 
+CASE 
+        WHEN prepregnant_bmi <= '18.5' THEN '0'
+        WHEN prepregnant_bmi > '18.5' And prepregnant_bmi <= '24.9' THEN '1'
+        WHEN prepregnant_bmi >= '25' And prepregnant_bmi <= '29.9' THEN '2'
+        WHEN prepregnant_bmi >= '30' THEN '3'
+        ELSE Null
+    END;
+
+--replace values in column: current_bmi_according_who
+UPDATE public.demographics
+SET current_bmi_according_who = 
+CASE 
+        WHEN current_bmi <= '18.5' THEN '0'
+        WHEN current_bmi > '18.5' AND current_bmi <= '24.9' THEN '1'
+        WHEN current_bmi >= '25' AND current_bmi <= '29.9' THEN '2'
+        WHEN current_bmi >= '30' THEN '3'
+        ELSE Null
+    END;
+
+select * from public.demographics;
+
+--#################################################################################
+--------DATA TRANSFORMATION STEPS FOR "pregnancy_history" TABLE----------------
+--#################################################################################
+----------------------------------2-----------------------------------------
+--Renamed the Column name from gestational_age_past_4_newborn to gestational_age_past_newborn_4
+Alter Table pregnancy_history
+Rename Column gestational_age_past_4_newborn to gestational_age_past_newborn_4;
+
+-------------------------3--------------------------------------------
+Update public.pregnancy_history
+Set past_newborn_1_weight = NULL
+WHERE past_newborn_1_weight = 'not_applicable' OR past_newborn_1_weight = 'no_answer';
+
+-------------------------4--------------------------------------------
+Update public.pregnancy_history
+Set past_newborn_2_weight = NULL
+WHERE past_newborn_2_weight = 'not_applicable' OR past_newborn_2_weight = 'no_answer';
+
+-------------------------------5-------------------------------------------
+Update public.pregnancy_history
+Set past_newborn_3_weight = NULL
+WHERE past_newborn_3_weight = 'not_applicable' OR past_newborn_3_weight = 'no_answer';
+
+--------------------------------6-------------------------------------------
+
+Update public.pregnancy_history
+Set past_newborn_4_weight = NULL
+WHERE past_newborn_4_weight = 'not_applicable' OR past_newborn_4_weight = 'no_answer';
+
+----------------------------7----------------------------------------------
+---Replacing Values for past_pregnancies_number in public.past_pregnancy_history---
+UPDATE public.pregnancy_history
+Set past_pregnancies_number =
+	case 
+	When NOT(past_newborn_1_weight isnull) and past_newborn_2_weight isnull 
+	and past_newborn_3_weight isnull  and past_newborn_4_weight isnull then '1'
+	
+	when NOT(past_newborn_1_weight isnull) and NOT(past_newborn_2_weight isnull) 
+	and past_newborn_3_weight isnull  and past_newborn_4_weight isnull then '2'
+	
+	when NOT(past_newborn_1_weight isnull) and NOT(past_newborn_2_weight isnull) 
+	and  NOT(past_newborn_3_weight isnull)  and past_newborn_4_weight isnull then '3'
+	
+	when NOT(past_newborn_1_weight isnull) and NOT(past_newborn_2_weight isnull) 
+	and  NOT(past_newborn_3_weight isnull) and NOT(past_newborn_4_weight isnull) then '4'
+	
+	ELSE past_pregnancies_number
+	END
+;
+
+--------------------------8---------------------------------------
+--Changing DATATYPE of past_newborn_1_weight--
+
+ALTER TABLE public.pregnancy_history
+ALTER COLUMN past_newborn_1_weight TYPE int USING 
+CASE
+    WHEN trim(past_newborn_1_weight) = '' THEN NULL
+    ELSE replace(past_newborn_1_weight, ',', '')::integer
+END;
+
+------------------------------------9---------------------------------
+
+--Changing DATATYPE of past_newborn_2_weight--
+
+ALTER TABLE public.pregnancy_history
+ALTER COLUMN past_newborn_2_weight TYPE int USING 
+CASE
+    WHEN trim(past_newborn_2_weight) = '' THEN NULL
+    ELSE replace(past_newborn_2_weight, ',', '')::integer
+END;
+
+---------------------------------10-------------------------------
+
+--Changing DATATYPE of past_newborn_3_weight--
+
+ALTER TABLE public.pregnancy_history
+ALTER COLUMN past_newborn_3_weight TYPE int USING 
+CASE
+    WHEN trim(past_newborn_3_weight) = '' THEN NULL
+    ELSE replace(past_newborn_3_weight, ',', '')::integer
+END;
+
+-----------------------------11------------------------
+
+--Changing DATATYPE of past_newborn_4_weight--
+ALTER TABLE public.pregnancy_history
+ALTER COLUMN past_newborn_4_weight TYPE int USING past_newborn_4_weight::integer;
+
+-----------------------------12---------------------------------------
+
+---Replacing Values for gestational_age_past_newborn_1 in public.past_pregnancy_history---
+
+UPDATE public.pregnancy_history
+Set gestational_age_past_newborn_1 =
+	case 
+	when past_newborn_1_weight isnull then null
+	when past_newborn_1_weight >= 2500 then '1'
+	when past_newborn_1_weight < 2500 then '0'
+	ELSE gestational_age_past_newborn_1
+	END
+;
+-------------------------13---------------------------
+
+UPDATE public.pregnancy_history
+Set gestational_age_past_newborn_2 =
+	case 
+	when past_newborn_2_weight isnull then null
+	when past_newborn_2_weight >= 2500 then '1'
+	when past_newborn_2_weight < 2500 then '0'
+	ELSE gestational_age_past_newborn_2
+	END
+;
+
+-----------------------------------14--------------------------------
+
+---Replacing Values for gestational_age_past_newborn_3 in public.past_pregnancy_history---
+
+UPDATE public.pregnancy_history
+Set gestational_age_past_newborn_3 =
+	case 
+	when past_newborn_3_weight isnull then null
+	when past_newborn_3_weight >= 2500 then '1'
+	when past_newborn_3_weight < 2500 then '0'
+	ELSE gestational_age_past_newborn_3
+	END
+;
+--------------------------15-----------------------------
+--Replacing Values for gestational_age_past_newborn_4 in public.past_pregnancy_history---
+
+UPDATE public.pregnancy_history
+Set gestational_age_past_newborn_4 =
+	case 
+	when past_newborn_4_weight isnull then null
+	when past_newborn_4_weight >= 2500 then '1'
+	when past_newborn_4_weight < 2500 then '0'
+	ELSE gestational_age_past_newborn_4
+	END
+;
+
+-------------------------15-------------------------------
+--Changing DATATYPE of case_id--
+
+Alter table public.pregnancy_history
+Alter Column "﻿case_id" TYPE int USING "﻿case_id"::int;
+
+-------------------------16-------------------------------
+--Changing DATATYPE of past_pregnancies_number--
+
+ALTER TABLE public.pregnancy_history
+ALTER COLUMN past_pregnancies_number TYPE smallint USING past_pregnancies_number::smallint;
+
+-------------------------17-------------------------------
+--Changing DATATYPE of miscarriage--
+
+ALTER TABLE public.pregnancy_history
+ALTER COLUMN miscarriage TYPE smallint USING miscarriage::smallint;
+
+-------------------------18-------------------------------
+--Changing DATATYPE of gestational_age_past_newborn_1--
+
+ALTER TABLE public.pregnancy_history
+ALTER COLUMN gestational_age_past_newborn_1 TYPE smallint USING (
+  NULLIF(gestational_age_past_newborn_1, '')::smallint;
+---------------------------------19------------------------------
+--Changing DATATYPE of gestational_age_past_newborn_2--
+
+ALTER TABLE public.pregnancy_history
+ALTER COLUMN gestational_age_past_newborn_2 TYPE smallint USING (
+  NULLIF(gestational_age_past_newborn_2, '')::smallint;
+---------------------------------20------------------------------
+--Changing DATATYPE of gestational_age_past_newborn_3--
+
+ALTER TABLE public.pregnancy_history
+ALTER COLUMN gestational_age_past_newborn_3 TYPE smallint USING (
+  NULLIF(gestational_age_past_newborn_3, '')::smallint;
+---------------------------------21------------------------------
+--Changing DATATYPE of gestational_age_past_newborn_4--
+ALTER TABLE public.pregnancy_history
+ALTER COLUMN gestational_age_past_newborn_4 TYPE smallint USING (
+  NULLIF(gestational_age_past_newborn_4, '')::smallint;
+
+--#####################################################################################
+--------------DATA TRANSFORMATION STEPS FOR "maternal_fat_assessment" TABLE------------
+--#####################################################################################
+--Change datatype to integer for column: case_id 
+ALTER TABLE public.maternal_fat_assessment
+	ALTER COLUMN "﻿case_id" TYPE integer USING "﻿case_id"::integer;	
+
+---------For column: periumbilical_subcutanous_fat----------------- 	
+---Replace all 'not_applicable' with NULLS, except for case_id = 9
+UPDATE public.maternal_fat_assessment
+SET  periumbilical_subcutanous_fat = NULLIF(periumbilical_subcutanous_fat, 'not_applicable');
+
+-----------For column:periumbilical_visceral_fat ----------------- 	
+---Replace all 'not_applicable' with NULLS
+UPDATE public.maternal_fat_assessment
+SET  periumbilical_visceral_fat = NULLIF(periumbilical_visceral_fat, 'not_applicable');
+
+--Change datatype to numeric for column:periumbilical_subcutanous_fat 
+ALTER TABLE public.maternal_fat_assessment
+	ALTER COLUMN periumbilical_subcutanous_fat TYPE numeric 
+					USING periumbilical_subcutanous_fat::numeric;
+
+--Change datatype to numeric for columns:periumbilical_visceral_fat
+---and periumbilical_total_fat
+ALTER TABLE public.maternal_fat_assessment
+	ALTER COLUMN periumbilical_visceral_fat TYPE numeric USING periumbilical_visceral_fat::numeric,
+	ALTER COLUMN periumbilical_total_fat TYPE numeric USING periumbilical_total_fat::numeric;	
+
+--Replace values in the column:periumbilical_subcutanous_fat with appropriate calculated values
+UPDATE public.maternal_fat_assessment
+SET periumbilical_subcutanous_fat = CASE
+										WHEN periumbilical_subcutanous_fat IS NULL
+											THEN (periumbilical_total_fat - periumbilical_visceral_fat)
+                                       WHEN periumbilical_subcutanous_fat != (periumbilical_total_fat - periumbilical_visceral_fat) 
+                                        	THEN (periumbilical_total_fat - periumbilical_visceral_fat)
+										ELSE periumbilical_subcutanous_fat
+                                    END;
+
+--Replace values in the column:periumbilical_total_fat with appropriate calculated values
+UPDATE public.maternal_fat_assessment
+	SET periumbilical_total_fat = CASE							
+										WHEN periumbilical_total_fat IS NULL
+											THEN (periumbilical_subcutanous_fat + periumbilical_visceral_fat)
+										ELSE periumbilical_total_fat
+								   END;
+
+
+------Change datatype to numeric for column:preperitoneal_subcutaneous_fat-------- 
+ALTER TABLE public.maternal_fat_assessment
+	ALTER COLUMN preperitoneal_subcutaneous_fat TYPE numeric 
+					USING preperitoneal_subcutaneous_fat::numeric;
+
+
+------Change datatype to numeric for column:preperitoneal_visceral_fat------------- 
+ALTER TABLE public.maternal_fat_assessment
+	ALTER COLUMN preperitoneal_visceral_fat TYPE numeric 
+					USING preperitoneal_visceral_fat::numeric;
+
+------Change datatypes for below columns------------- 
+ALTER TABLE public.maternal_fat_assessment
+	ALTER COLUMN current_bmi TYPE numeric 
+					USING current_bmi::numeric,
+	ALTER COLUMN current_bmi_according_who TYPE smallint 
+					USING current_bmi_according_who::smallint,
+	ALTER COLUMN maternal_brachial_circumference TYPE numeric 
+					USING maternal_brachial_circumference::numeric,
+	ALTER COLUMN circumference_maternal_calf TYPE numeric 
+					USING circumference_maternal_calf::numeric,
+	ALTER COLUMN maternal_neck_circumference TYPE numeric 
+					USING maternal_neck_circumference::numeric,
+	ALTER COLUMN maternal_hip_circumference TYPE numeric 
+					USING maternal_hip_circumference::numeric,
+	ALTER COLUMN maternal_waist_circumference TYPE numeric 
+					USING maternal_waist_circumference::numeric,
+	ALTER COLUMN mean_tricciptal_skinfold TYPE numeric 
+					USING mean_tricciptal_skinfold::numeric,
+	ALTER COLUMN mean_subscapular_skinfold TYPE numeric 
+					USING mean_subscapular_skinfold::numeric,
+	ALTER COLUMN mean_supra_iliac_skin_fold TYPE numeric 
+					USING mean_supra_iliac_skin_fold::numeric;
+
+--For columns:current_maternal_weight_1st_tri,current_maternal_weight_2nd_tri
+--and current_maternal_weight_3rd_tri
+---Replace all 'not_applicable' with NULLS
+UPDATE public.maternal_fat_assessment
+	SET current_maternal_weight_1st_tri = NULLIF(current_maternal_weight_1st_tri,'not_applicable')
+
+UPDATE public.maternal_fat_assessment
+SET current_maternal_weight_2nd_tri  = NULLIF(current_maternal_weight_2nd_tri, 'not_applicable');
+
+UPDATE public.maternal_fat_assessment
+SET  current_maternal_weight_3rd_tri = NULLIF(current_maternal_weight_3rd_tri, 'not_applicable');
+
+--replace outlier value 999 with NULL for the column: current_maternal_weight_3rd_tri 
+UPDATE public.maternal_fat_assessment
+SET  current_maternal_weight_3rd_tri = NULLIF(current_maternal_weight_3rd_tri, '999');
+
+------Change datatypes for below columns------------- 
+ALTER TABLE public.maternal_fat_assessment
+	ALTER COLUMN current_maternal_weight_1st_tri TYPE numeric 
+					USING current_maternal_weight_1st_tri::numeric,
+	ALTER COLUMN current_maternal_weight_2nd_tri TYPE numeric 
+					USING current_maternal_weight_2nd_tri::numeric,
+	ALTER COLUMN current_maternal_weight_3rd_tri TYPE numeric 
+					USING current_maternal_weight_3rd_tri::numeric;
+
+-----------------------------------------------------------------------------------------------
+--------------DATA TRANSFORMATION STEPS FOR "newborn_details" TABLE---------------------
+----------------------------------------------------------------------------------------------
+--Change datatype to integer for column: case_id 
+ALTER TABLE public.newborn_details
+	ALTER COLUMN "﻿case_id" TYPE integer USING "﻿case_id"::integer;
+
+--For column:newborn_weight 
+--replace commas with empty string
+UPDATE public.newborn_details
+SET newborn_weight = REPLACE(newborn_weight,',','');
+
+--Change datatype to integer for column: newborn_weight 
+ALTER TABLE public.newborn_details
+	ALTER COLUMN newborn_weight TYPE integer USING newborn_weight::integer;
+	
+-----------For column: newborn_height ----------------- 	
+---Replace all 'not_applicable' with NULLS
+UPDATE public.newborn_details
+SET  newborn_height = NULLIF(newborn_height, 'not_applicable');
+--Change datatype to integer for column: newborn_weight 
+ALTER TABLE public.newborn_details
+	ALTER COLUMN newborn_height TYPE numeric USING newborn_height::numeric;
+
+-----------For column: newborn_head_circumference ----------------- 
+---Replace all 'not_applicable' with NULLS
+UPDATE public.newborn_details
+SET  newborn_head_circumference = NULLIF(newborn_head_circumference, 'not_applicable');
+--Change datatype to numeric 
+ALTER TABLE public.newborn_details
+	ALTER COLUMN newborn_head_circumference TYPE numeric USING newborn_head_circumference::numeric;
+
+-----------For column: thoracic_perimeter_newborn ----------------- 
+--Change datatype to numeric 
+ALTER TABLE public.newborn_details
+	ALTER COLUMN thoracic_perimeter_newborn TYPE numeric USING thoracic_perimeter_newborn::numeric;
+
+-----------For column: meconium_labor ----------------- 
+--Change datatype to smallint for column: meconium_labor 
+ALTER TABLE public.newborn_details
+	ALTER COLUMN meconium_labor TYPE smallint USING meconium_labor::smallint;
+
+-----------For column: apgar_1st_min ----------------- 
+--Change datatype to smallint for column: apgar_1st_min 
+ALTER TABLE public.newborn_details
+	ALTER COLUMN apgar_1st_min TYPE smallint USING apgar_1st_min::smallint;
+
+--Replace outlier value 99 with NULL
+UPDATE public.newborn_details
+	SET apgar_1st_min = NULLIF(apgar_1st_min,'99');
+
+--For column:apgar_5th_min, pediatric_resuscitation_maneuvers,newborn_intubation, and newborn_airway_aspiration
+--Change datatype to smallint 
+ALTER TABLE public.newborn_details
+	ALTER COLUMN apgar_5th_min TYPE smallint USING apgar_5th_min::smallint,
+	ALTER COLUMN pediatric_resuscitation_maneuvers TYPE smallint USING pediatric_resuscitation_maneuvers::smallint,
+	ALTER COLUMN newborn_intubation TYPE smallint USING newborn_intubation::smallint,
+	ALTER COLUMN newborn_airway_aspiration TYPE smallint USING newborn_airway_aspiration::smallint;
+
+
+--######################################################################################
+--------------DATA TRANSFORMATION STEPS FOR "patient_history" TABLE---------------------
+--######################################################################################
+
+ALTER TABLE public.patient_history 
+ALTER COLUMN "﻿case_id" TYPE integer USING "﻿case_id"::integer;
+
+select * from public.patient_history;
+------------------------------------------------------------------------------------------
+--Create "labor_room_evaluation" table by importing data from "maternal_health"(main table)
+create table if not exists labor_room_evaluation as
+select "﻿case_id",gestational_age_at_birth,prepartum_maternal_weight,prepartum_maternal_heigh,
+cesarean_section_reason,hospital_systolic_blood_pressure,hospital_diastolic_blood_pressure,
+hospital_hypertension,preeclampsia_record_pregnancy,gestational_diabetes_mellitus,
+disease_diagnose_during_pregnancy,treatment_disease_pregnancy,ultrasound_gestational_age,
+expected_weight_for_the_newborn,delivery_mode,mothers_hospital_stay
+from public.maternal_health;
+
+ALTER TABLE public.labor_room_evaluation 
+ALTER COLUMN "﻿case_id" TYPE integer USING "﻿case_id"::integer;
+--------------------------------------------------------------------------------------------------
+--Transformation steps for chronic_diabetes column
+--IF gestational_diabetes_mellitus='0' and chronic_diabetes ='888','88,888.00' THEN '0' (Because most values are same in both columns for all other records)
+--Replace not_applicable to 'Null' 
+UPDATE public.patient_history
+SET chronic_diabetes =
+    CASE 
+        WHEN gestational_diabetes_mellitus='0' and chronic_diabetes IN('888','88,888.00') THEN '0' 
+        WHEN chronic_diabetes ='not_applicable' THEN Null 
+		ELSE chronic_diabetes
+    END
+FROM public.labor_room_evaluation
+WHERE patient_history."﻿case_id"=labor_room_evaluation."﻿case_id" ;
+--Change the datatype to smallint
+alter table public.patient_history 
+alter column chronic_diabetes TYPE smallint USING chronic_diabetes::smallint;
+--Fetch all the columns from "patient_history" table.
+select * from patient_history WHERE "﻿case_id" IN(88,118);
+----------------------------------------------------------------------------------------
+--Transformation steps for chronic_diseases column
+--Replace not_applicable(1 not_applicable) to 'Null'.
+UPDATE public.patient_history
+SET chronic_diseases = Null
+WHERE chronic_diseases='not_applicable';
+--Change the datatype to smallint
+alter table public.patient_history 
+alter column chronic_diseases TYPE smallint USING chronic_diseases::smallint;
+--Fetch all the columns from "patient_history" table.
+select chronic_diseases from patient_history;
+-----------------------------------------------------------------------------------------
+-- Transformation steps on hypertension_past_reported column
+--Change the datatype to smallint
+alter table public.patient_history 
+alter column hypertension_past_reported TYPE smallint USING hypertension_past_reported::smallint;
+/*0-No, 1-Yes; If hypertension_past_reported =1 and 
+if it is 'not_applicable' in hypertension_past_treatment then Replace '1' in 
+'hypertension_past_reported'  with '0'(1 record found) (case_id=187)*/
+
+UPDATE public.patient_history
+SET hypertension_past_reported = 
+    CASE 
+        WHEN hypertension_past_reported = 1 AND hypertension_past_treatment = 'not_applicable' THEN 0
+	ELSE hypertension_past_reported
+    END;
+
+--Fetch all the columns from "patient_history" table with case_id=187
+select * from patient_history WHERE "﻿case_id"=187;	
+--------------------------------------------------------------------------------------------------
+--Transformation steps on hypertension_past_treatment
+--Replace 0- Medicine, 1- No medicine;  No cleaning required
+
+UPDATE public.patient_history
+SET hypertension_past_treatment = 
+ CASE 
+        WHEN hypertension_past_treatment = '0' THEN 'Medicine'
+        WHEN hypertension_past_treatment = '1' THEN 'No Medicine'
+        ELSE Null
+    END;
+--Fetch all the columns from "patient_history" table.
+select * from patient_history;
+--------------------------------------------------------------------------------------------------
+--Transformation steps on diabetes_mellitus_dm_reported
+--0-No, 1-Yes;
+--Change the datatype to smallint
+alter table public.patient_history 
+alter column diabetes_mellitus_dm_reported TYPE smallint USING diabetes_mellitus_dm_reported::smallint;
+
+--As Chronic diabeties column is 1 reported for 18 cases and those cases are not reflected in 
+--diabetes_mellitus_dm_reported, Based on that we have decided to add 1 in this column wherever 
+--chronic diabetes=1.
+UPDATE public.patient_history
+SET diabetes_mellitus_dm_reported =
+    CASE 
+        WHEN chronic_diabetes='1' THEN 1
+        ELSE diabetes_mellitus_dm_reported
+    END;
+	
+--Fetch all the columns from "patient_history" table.
+select diabetes_mellitus_dm_reported from patient_history where chronic_diabetes=1;
+
+select diabetes_mellitus_dm_reported from patient_history;
+-----------------------------------------------------------------------------------------
+--Transformation steps on diabetes_mellitus_disease_gap
+--Replace 0- Chronic, 1- Past Pregnancy; 
+--If chronic_diabetes='1' AND diabetes_mellitus_disease_gap = 'not_applicable' THEN 'Chronic'
+--If diabetes_mellitus_dm_reported='0' then 'Not_applicable'=Null else as it is.
+UPDATE public.patient_history
+SET diabetes_mellitus_disease_gap = 
+ CASE 
+        WHEN diabetes_mellitus_disease_gap = '0' THEN 'Chronic'
+        WHEN diabetes_mellitus_disease_gap = '1' THEN 'Past Pregnancy'
+		WHEN chronic_diabetes='1' THEN 'Chronic'
+		WHEN diabetes_mellitus_dm_reported='0' AND diabetes_mellitus_disease_gap = 'not_applicable' THEN Null
+		ELSE diabetes_mellitus_disease_gap
+ END; 
+ 
+ --Fetch all the columns from "patient_history" table.
+select * from patient_history where chronic_diabetes='1';
+
+select diabetes_mellitus_dm_reported, diabetes_mellitus_disease_gap from patient_history where chronic_diabetes='1';
+--------------------------------------------------------------------------------------------------
+--Transformation steps on diabetes_mellitus_treatment
+--Replace 0- No Medicines, 1- Medicines, 2- Diet ; Replace not_applicable=Null
+UPDATE public.patient_history
+SET diabetes_mellitus_treatment = 
+ CASE 
+        WHEN diabetes_mellitus_treatment = '0' THEN 'No Medicines'
+        WHEN diabetes_mellitus_treatment = '1' THEN 'Medicines'
+		WHEN diabetes_mellitus_treatment = '2' THEN 'Diet'
+		ELSE Null
+ END; 
+ 
+ --Fetch all the columns from "patient_history" table.
+select * from patient_history;
+-----------------------------------------------------------------------------------------
+--Transformation steps on tobacco_use
+--0-No, 1-Yes;
+--Change the datatype to smallint
+alter table public.patient_history 
+alter column tobacco_use TYPE smallint USING tobacco_use::smallint;
+--Fetch all the columns from "patient_history" table.
+select tobacco_use from patient_history;
+--------------------------------------------------------------------------------------
+--Transformation steps on tobacco_use_in_months
+--Change the data type to Numeric;
+--If tobacco_use= '0' then not_applicable in tobacco_use_in_months =Null 
+UPDATE public.patient_history
+SET tobacco_use_in_months=
+ CASE 
+        WHEN tobacco_use= '0' and tobacco_use_in_months = 'not_applicable' THEN Null
+		ELSE tobacco_use_in_months
+ END; 
+--Change the datatype to smallint
+alter table public.patient_history 
+alter column tobacco_use_in_months TYPE Numeric USING tobacco_use_in_months::Numeric;
+--Fetch all the columns from "patient_history" table.
+select tobacco_use_in_months from patient_history;
+-----------------------------------------------------------------------------------------
+--Transformation steps on tobacco_quantity_by_day
+--Change the data type to Numeric;
+-- If tobacco_use= '0' then not_applicable in tobacco_quantity_by_day =Null 
+UPDATE public.patient_history
+SET tobacco_quantity_by_day=
+ CASE 
+        WHEN tobacco_use= '0' and tobacco_quantity_by_day = 'not_applicable' THEN Null
+		ELSE tobacco_quantity_by_day
+ END; 
+--Change the datatype to Numeric
+alter table public.patient_history 
+alter column tobacco_quantity_by_day TYPE Numeric USING tobacco_quantity_by_day::Numeric;
+
+--Fetch all the columns from "patient_history" table.
+select * from patient_history;
+-----------------------------------------------------------------------------------------
+--Transformation steps on alcohol_use
+--0-No, 1-Yes;
+--Change the datatype to smallint
+alter table public.patient_history 
+alter column alcohol_use TYPE smallint USING alcohol_use::smallint;
+
+--Fetch all the columns from "patient_history" table.
+select * from patient_history;
+--------------------------------------------------------------------------------------
+--Transformation steps on alcohol_quantity_milliliters
+--Change data type to Integer;
+--if alcohol_use= '1' then no_answer= Null Else not_applicable=Null;
+UPDATE public.patient_history
+SET alcohol_quantity_milliliters =
+    CASE 
+        WHEN alcohol_use = '1' AND alcohol_quantity_milliliters = 'no_answer' THEN NULL
+        WHEN alcohol_use = '0' AND alcohol_quantity_milliliters = 'not_available' THEN NULL
+        WHEN alcohol_quantity_milliliters = 'not_applicable' THEN NULL
+        ELSE CAST(REPLACE(alcohol_quantity_milliliters, ',', '') AS INTEGER)
+    END;
+--Change the datatype to Integer
+alter table public.patient_history 
+alter column alcohol_quantity_milliliters TYPE Integer USING alcohol_quantity_milliliters::Integer;
+
+--Fetch all the columns from "patient_history" table.
+select alcohol_quantity_milliliters from patient_history;
+-----------------------------------------------------------------------------------------
+--Transformation steps on alcohol_preference
+--Replace 0- Fermented, 1- Distilled; 
+UPDATE public.patient_history
+SET alcohol_preference = 
+ CASE 
+        WHEN alcohol_preference = '0' THEN 'Fermented'
+        WHEN alcohol_preference = '1' THEN 'Distilled'
+	    ELSE alcohol_preference
+ END; 
+--Fetch all the columns from "patient_history" table.
+select alcohol_preference from patient_history;
+--If alcohol_use='0' then alcohol_preference = Null; 
+--If alcohol_use='1' and alcohol_quantity_milliliters=50 then alcohol_preference = '0'."
+
+ UPDATE public.patient_history
+SET alcohol_preference = 
+    CASE 
+        WHEN alcohol_use = '0' THEN Null
+        WHEN alcohol_use = '1' and alcohol_quantity_milliliters = '50' THEN 'Fermented'
+        ELSE alcohol_preference
+    END;
+--Fetch all the columns from "patient_history" table.
+select alcohol_preference from patient_history;	
+-----------------------------------------------------------------------------------------
+--Transformation steps for Creating new column named 'Number_of_Alcohol_Units'
+ALTER TABLE public.patient_history
+	ADD COLUMN Number_of_Alcohol_Units numeric;
+--Assign data type numeric
+--ALTER TABLE public.patient_history
+--ALTER COLUMN Number_of_Alcohol_Units TYPE float USING Number_of_Alcohol_Units ::float;
+
+--If alcohol_preference='0/Fermented' then alcohol_quantity_milliliters * (12/1000) 
+--If alcohol_preference='1/Distilled' then alcohol_quantity_milliliters * (40/1000) 
+--Else Null.
+UPDATE public.patient_history
+SET Number_of_Alcohol_Units = 
+    CASE
+        WHEN alcohol_preference='Fermented' THEN alcohol_quantity_milliliters * 0.012::float
+        WHEN alcohol_preference='Distilled' THEN alcohol_quantity_milliliters * 0.040::float
+        ELSE Null
+    END;
+--Fetch  from "patient_history" table.
+select * from patient_history;
+-----------------------------------------------------------------------------------------------------
+--Transformation steps for drugs_preference column
+--Replace 0 - No Drugs, 1 - Marijuana, Replace 'not_applicable' to Null (Caseid- 265)
+UPDATE public.patient_history
+SET drugs_preference =
+    CASE 
+        WHEN drugs_preference = '0' THEN 'No Drugs'
+        WHEN drugs_preference = '1' THEN 'Marijuana'
+       ELSE NULL
+    END;
+	
+--Fetch all the columns from "patient_history" table.
+select drugs_preference from patient_history;
+---------------------------------------------------------------------------------------------
+--Transformation steps for drugs_years_use column
+--Replace not_applicable to 'Null' 
+UPDATE public.patient_history
+SET drugs_years_use=
+    CASE 
+        WHEN drugs_years_use = 'not_applicable' THEN Null
+        ELSE drugs_years_use
+    END;
+--Change the datatype to Integer
+alter table public.patient_history 
+alter column drugs_years_use TYPE smallint USING drugs_years_use::smallint;
+
+--Fetch all the columns from "patient_history" table.
+select drugs_years_use from patient_history where drugs_years_use is not null;
+---------------------------------------------------------------------------------------------
+--Transformation steps for drugs_during_pregnancy column
+--0-No, 1-Yes; Change data type to smallint
+--Replace not_applicable to 'Null' 
+UPDATE public.patient_history
+SET drugs_during_pregnancy=
+    CASE 
+        WHEN drugs_during_pregnancy = 'not_applicable' THEN Null
+        ELSE drugs_during_pregnancy
+    END;
+--Change the datatype to Integer
+alter table public.patient_history 
+alter column drugs_during_pregnancy TYPE smallint USING drugs_during_pregnancy::smallint;
+
+--Fetch all the columns from "patient_history" table.
+select drugs_during_pregnancy from patient_history where drugs_during_pregnancy is not null;
+---------------------------------------------------------------------------------------
+
+
+--######################################################################################
+------------DATA TRANSFORMATION STEPS FOR "labor_room_evaluation" TABLE--------------
+--######################################################################################
+
+-- update  prepartum_maternal_weight columns to null-------------------------
+UPDATE public.labor_room_evaluation
+SET prepartum_maternal_weight = NULL
+where prepartum_maternal_weight LIKE '%not_applicable%';
+-----------------------------------------------------------------------------------
+-- update  prepartum_maternal_heigh columns to null-------------------------
+
+UPDATE public.labor_room_evaluation
+SET prepartum_maternal_heigh = NULL
+where prepartum_maternal_heigh LIKE '%not_applicable%';
+
+-----------------------------------------------------------------------
+-- - Replace',' in column values for expected_weight_for_the_newborn
+
+UPDATE public.labor_room_evaluation
+SET expected_weight_for_the_newborn = REPLACE(expected_weight_for_the_newborn,',' ,'')
+WHERE expected_weight_for_the_newborn LIKE ('%,%')
+
+-- - Checking '.00' in column values for expected_weight_for_the_newborn
+
+SELECT expected_weight_for_the_newborn from public.labor_room_evaluation
+where expected_weight_for_the_newborn  LIKE ('%.00%')
+
+-- - Replace'.00' in column values for expected_weight_for_the_newborn
+
+Update public.labor_room_evaluation
+SET expected_weight_for_the_newborn = REPLACE(expected_weight_for_the_newborn,'.00' ,'')
+WHERE expected_weight_for_the_newborn LIKE ('%.00%')
+
+-------------------------------------------------------------------------------------
+
+-- - Checking values for Delivery Mode =5 
+SELECT delivery_mode, * from public.labor_room_evaluation
+where delivery_mode = '12'
+
+-- - Updating the values for Delivery mode= 12 to '5'
+UPDATE public.labor_room_evaluation
+SET delivery_mode = REPLACE(delivery_mode,'12' ,'5')
+where delivery_mode = '12'
+
+-----------------------------------------------------------------------------------
+
+-- Updating the values for hospital_hypertension, hospital_systolic_blood_pressure,
+--  hospital_diastolic_blood_pressure to null for not-applicable,
+
+UPDATE public.labor_room_evaluation
+SET hospital_hypertension = NULL
+where hospital_hypertension LIKE '%not_applicable%';
+
+UPDATE public.labor_room_evaluation
+SET hospital_systolic_blood_pressure = NULL
+where hospital_systolic_blood_pressure LIKE '%not_applicable%';
+
+UPDATE public.labor_room_evaluation
+SET hospital_diastolic_blood_pressure = NULL
+where hospital_diastolic_blood_pressure LIKE '%not_applicable%';
+
+
+-- Replace  the value for cesarean_section_reason to other
+update public.labor_room_evaluation
+SET cesarean_section_reason  = REPLACE(cesarean_section_reason ,'12' ,'Other')
+WHERE cesarean_section_reason  = '12';
+
+--------------------------------------------------------------------------------
+
+UPDATE public.labor_room_evaluation
+SET cesarean_section_reason = 
+    Case
+        When delivery_mode = '8' THEN 'not_applicable'
+        When delivery_mode IS NULL THEN NULL
+        Else cesarean_section_reason
+    End;
+--------------------------------------------------------------------------------
+Update public.labor_room_evaluation
+set cesarean_section_reason = 
+Case
+When
+delivery_mode = '5' And cesarean_section_reason  Is NULL Then 'other'
+Else cesarean_section_reason 
+End
+ Where delivery_mode = '5';
+ 
+ -- Updating the delivery_mode
+Update public.labor_room_evaluation
+set delivery_mode=
+Case
+when delivery_mode Like '0' Then Replace (delivery_mode, '0', 'Null') 
+ when delivery_mode Like '1' Then Replace (delivery_mode, '1', 'vaginal') 
+when delivery_mode Like '2' Then Replace (delivery_mode, '2', 'vaginal forcipe') 
+when delivery_mode Like '3' Then Replace (delivery_mode, '3', 'miscarriage with curettage') 
+when delivery_mode Like '4' Then Replace (delivery_mode, '4', 'miscarriage without curettage') 
+when delivery_mode Like '5' Then Replace (delivery_mode, '5', 'cesarean section') 
+when delivery_mode Like '6' Then Replace (delivery_mode, '6', 'cesarean by jeopardy') 
+when delivery_mode Like '7' Then Replace (delivery_mode, '7', 'vaginal with episiotomy') 
+when delivery_mode Like '8' Then Replace (delivery_mode, '8', 'vaginal without episiotomy') 
+when delivery_mode Like '9' Then Replace (delivery_mode, '9', 'vaginal with episiotomy plus forcipe') 
+when delivery_mode Like '10' Then Replace (delivery_mode, '10', 'Not answered') 
+when delivery_mode Like '11' Then Replace (delivery_mode, '11', 'NULL') 
+else delivery_mode end;
+
+--------------------------------------------------------------------------------
+
+-- Replace metformina to metformin 
+UPDATE public.labor_room_evaluation
+set treatment_disease_pregnancy=
+replace (treatment_disease_pregnancy,'metformina','metformin') ;
+
+-- Replace 'medicamento' to medication'
+ 
+	UPDATE public.labor_room_evaluation
+	Set treatment_disease_pregnancy =
+	Case 
+	When (treatment_disease_pregnancy = 'medicamento' Or treatment_disease_pregnancy = 'Medicamento')  Then 'medication'
+	Else treatment_disease_pregnancy End 
+	Where treatment_disease_pregnancy Like '%edicamento%' ;
+	
+-- Replace fluoxetina to Fluoxetine
+	
+UPDATE public.labor_room_evaluation
+set treatment_disease_pregnancy=
+replace (treatment_disease_pregnancy,'fluoxetina', 'Fluoxetine') ;
+
+-- Replace fluoxetina to Fluoxetine
+
+UPDATE public.labor_room_evaluation
+set treatment_disease_pregnancy=
+replace (treatment_disease_pregnancy,'Fluxetina', 'Fluoxetine') ;
+
+-- Replace '0' to 'not_applicable'
+UPDATE public.labor_room_evaluation
+set treatment_disease_pregnancy=
+replace (treatment_disease_pregnancy,'0', 'not_applicable');
+
+-- Replace ITU to UTI
+UPDATE public.labor_room_evaluation
+set treatment_disease_pregnancy=
+replace (treatment_disease_pregnancy,'45', 'not_applicable');
+
+-- Checking value for '45'
+select treatment_disease_pregnancy from public.labor_room_evaluation
+where treatment_disease_pregnancy ='45'
+
+-- Replace 'Aspirina to 'aspirin'
+
+UPDATE public.labor_room_evaluation
+set treatment_disease_pregnancy=
+replace (treatment_disease_pregnancy,'aspirina', 'aspirin') ;
+
+-- Checking value for 'aspirin'
+select treatment_disease_pregnancy from public.labor_room_evaluation
+where treatment_disease_pregnancy ='aspirin'
+	
+-- Replace 'Insulina' to 'insulin'
+
+UPDATE public.labor_room_evaluation
+set treatment_disease_pregnancy=
+replace (treatment_disease_pregnancy,'insulina', 'insulin');
+
+-- Checking value for 'insulin'
+select treatment_disease_pregnancy from public.labor_room_evaluation
+where treatment_disease_pregnancy ='insulin'
+
+-- Replace 'predinisolona' to 'prednisolone'
+
+UPDATE public.labor_room_evaluation
+set treatment_disease_pregnancy=
+replace (treatment_disease_pregnancy,'predinisolona', 'prednisolone') ;
+
+-- Checking value for 'prednisolone'
+select treatment_disease_pregnancy from public.labor_room_evaluation
+where treatment_disease_pregnancy ='prednisolone'
+
+-- Checking value for 'prednisolone'
+select treatment_disease_pregnancy from public.labor_room_evaluation
+where treatment_disease_pregnancy ='prednisolone'
+
+-- Replacing the values for itu and DMG
+
+UPDATE public.labor_room_evaluation
+Set disease_diagnose_during_pregnancy =
+Case When disease_diagnose_during_pregnancy Like '%ITU' Then
+Replace(disease_diagnose_during_pregnancy, 'ITU', 'UTI') 
+When disease_diagnose_during_pregnancy Like '%itu' Then
+Replace(disease_diagnose_during_pregnancy, 'itu', 'UTI') 
+ When disease_diagnose_during_pregnancy Like '%DMG' Then
+Replace(disease_diagnose_during_pregnancy, 'DMG', 'GDM')  
+When disease_diagnose_during_pregnancy Like '%has%' Then 
+Replace(disease_diagnose_during_pregnancy, 'has', 'HAS') 
+When disease_diagnose_during_pregnancy Like '%Has%' 
+Then Replace(disease_diagnose_during_pregnancy, 'Has', 'HAS') 
+Else disease_diagnose_during_pregnancy End;
+
+-- ##########################################################3
+Update public.labor_room_evaluation
+set disease_diagnose_during_pregnancy=
+CASE 
+When disease_diagnose_during_pregnancy Like '%asthma%' Then
+Replace(disease_diagnose_during_pregnancy, 'asthma', 'Asthma') 
+When disease_diagnose_during_pregnancy Like '%depression%' Then
+Replace(disease_diagnose_during_pregnancy, 'depression', 'Depression') 
+else disease_diagnose_during_pregnancy end;
+
+-- WHEN disease_diagnose_during_pregnancy LIKE '%pre%' THEN
+-- REPLACE(disease_diagnose_during_pregnancy, '%pre%', 'Pre-')
+
+-- Updating the column disease_diagnose_during_pregnancy for preeclampsia_record_pregnancy
+
+Update public.labor_room_evaluation
+set disease_diagnose_during_pregnancy=
+CASE 
+-- 
+/*When 
+preeclampsia_record_pregnancy = '1' and disease_diagnose_during_pregnancy LIKE '%Pre-%' THEN disease_diagnose_during_pregnancy*/
+When
+--preeclampsia_record_pregnancy = '1' and  
+disease_diagnose_during_pregnancy Like '%not_applicable%' Then 'Pre-eclampsia'
+When
+(disease_diagnose_during_pregnancy Like '%Pre%' Or disease_diagnose_during_pregnancy Like '%pre%') 
+then disease_diagnose_during_pregnancy
+
+--preeclampsia_record_pregnancy = '1' 
+When preeclampsia_record_pregnancy = '1'
+And (disease_diagnose_during_pregnancy Is Not NULL Or disease_diagnose_during_pregnancy != ' ')
+then disease_diagnose_during_pregnancy || ' + ' || 'Pre-eclampsia' 
+Else disease_diagnose_during_pregnancy End 
+Where preeclampsia_record_pregnancy = '1';
+----------------------------------------------------------------------------------
+--
+Update  public.labor_room_evaluation
+Set disease_diagnose_during_pregnancy =
+CASE 
+When
+gestational_diabetes_mellitus = '1' and  
+disease_diagnose_during_pregnancy Like '%not_applicable%' Then 'GDM'
+ When
+gestational_diabetes_mellitus = '1' and  
+(disease_diagnose_during_pregnancy is NULL
+Or disease_diagnose_during_pregnancy = ''
+Or disease_diagnose_during_pregnancy = ' ' 
+Or disease_diagnose_during_pregnancy = '0')
+Then 'GDM'
+When
+(disease_diagnose_during_pregnancy Like '%GDM%' Or disease_diagnose_during_pregnancy Like '%gdm%')
+Then disease_diagnose_during_pregnancy
+
+--gestational_diabetes_mellitus = '1' 
+When gestational_diabetes_mellitus = '1'
+And (disease_diagnose_during_pregnancy Is not NULL Or disease_diagnose_during_pregnancy != ' ')
+Then disease_diagnose_during_pregnancy || ' + ' || 'GDM' 
+Else disease_diagnose_during_pregnancy End 
+Where gestational_diabetes_mellitus = '1';
+
+select disease_diagnose_during_pregnancy ,gestational_diabetes_mellitus from public.labor_room_evaluation
+
+-- Updating the column hospital_hypertension
+Update  public.labor_room_evaluation
+Set hospital_hypertension =
+-- Select disease_diagnose_during_pregnancy,hospital_hypertension ,
+case
+when
+(disease_diagnose_during_pregnancy like '%HAS%' or disease_diagnose_during_pregnancy like '%Has%')
+then 1
+when trim(disease_diagnose_during_pregnancy) IN ('not_applicable', '', NULL) THEN 0
+Else 0
+end ;
+
+select hospital_hypertension ,disease_diagnose_during_pregnancy from public.labor_room_evaluation
+
+
+-- Updating the delivery_mode
+select delivery_mode ,
+Case
+when delivery_mode Like '0' Then Replace (delivery_mode, '0', 'Null') 
+ when delivery_mode Like '1' Then Replace (delivery_mode, '1', 'vaginal') 
+when delivery_mode Like '2' Then Replace (delivery_mode, '2', 'vaginal forcipe') 
+when delivery_mode Like '3' Then Replace (delivery_mode, '3', 'miscarriage with curettage') 
+when delivery_mode Like '4' Then Replace (delivery_mode, '4', 'miscarriage without curettage') 
+when delivery_mode Like '5' Then Replace (delivery_mode, '5', 'cesarean section') 
+when delivery_mode Like '6' Then Replace (delivery_mode, '6', 'cesarean by jeopardy') 
+when delivery_mode Like '7' Then Replace (delivery_mode, '7', 'vaginal with episiotomy') 
+when delivery_mode Like '8' Then Replace (delivery_mode, '8', 'vaginal without episiotomy') 
+when delivery_mode Like '9' Then Replace (delivery_mode, '9', 'vaginal with episiotomy plus forcipe') 
+when delivery_mode Like '10' Then Replace (delivery_mode, '10', 'Not answered') 
+when delivery_mode Like '11' Then Replace (delivery_mode, '11', 'NULL') 
+else delivery_mode end
+from public.labor_room_evaluation
+where delivery_mode = '2';
+
+-------------------------------------------------------------------------------------
+ALTER TABLE public.labor_room_evaluation
+	RENAME Column	prepartum_maternal_heigh to  prepartum_maternal_height;
+	
+ALTER TABLE public.labor_room_evaluation
+ Alter Column	gestational_age_at_birth	Type Numeric Using gestational_age_at_birth::Numeric,
+ Alter Column	prepartum_maternal_weight	Type Numeric Using prepartum_maternal_weight::Numeric,
+  Alter Column	prepartum_maternal_height	Type Numeric Using prepartum_maternal_height::Numeric,
+  Alter Column	hospital_systolic_blood_pressure	Type integer Using hospital_systolic_blood_pressure::integer,
+  Alter Column	hospital_diastolic_blood_pressure	Type integer Using hospital_diastolic_blood_pressure::integer,
+ Alter Column	hospital_hypertension Type SMALLINT Using hospital_hypertension::smallint,
+ Alter Column	preeclampsia_record_pregnancy	Type SMALLINT Using preeclampsia_record_pregnancy::smallint,
+ Alter Column	gestational_diabetes_mellitus	Type SMALLINT Using gestational_diabetes_mellitus::smallint,
+  Alter Column	ultrasound_gestational_age	Type Numeric Using ultrasound_gestational_age::Numeric,
+ Alter Column	expected_weight_for_the_newborn Type integer Using expected_weight_for_the_newborn ::integer,
+  Alter Column	delivery_mode	Type Text Using delivery_mode::Text,
+ ALter Column mothers_hospital_stay type smallint using mothers_hospital_stay::smallint;
+
+--###################################################################################
+--------------DATA TRANSFORMATION STEPS FOR "lab_readings" TABLE---------------------
+--###################################################################################
+--For table:lab_readings 
+--replace commas with empty string
+UPDATE lab_readings
+SET fetal_weight_at_ultrasound = REPLACE(fetal_weight_at_ultrasound,',','');
+
+----Transformation Steps for fetal_weight_at_ultrasound,weight_fetal_percentile, right_systolic_blood_pressure, 
+----right_diastolic_blood_pressure, left_systolic_blood_pressure,left_diastolic_blood_pressure 
+----Replace "not_applicable" with blank.
+
+UPDATE lab_readings
+SET
+    left_systolic_blood_pressure = CASE
+        WHEN left_systolic_blood_pressure = 'not_applicable' THEN NULL
+        ELSE left_systolic_blood_pressure
+    END,
+	 right_systolic_blood_pressure = CASE
+        WHEN right_systolic_blood_pressure = 'not_applicable' THEN NULL
+        ELSE right_systolic_blood_pressure
+    END,
+    left_diastolic_blood_pressure = CASE
+        WHEN left_diastolic_blood_pressure = 'not_applicable' THEN NULL
+        ELSE left_diastolic_blood_pressure
+    END,
+	right_diastolic_blood_pressure = CASE
+        WHEN right_diastolic_blood_pressure = 'not_applicable' THEN NULL
+        ELSE right_diastolic_blood_pressure
+    END,
+	fetal_weight_at_ultrasound = CASE
+        WHEN fetal_weight_at_ultrasound = 'not_applicable' THEN NULL
+        ELSE fetal_weight_at_ultrasound
+    END,
+	weight_fetal_percentile = CASE
+        WHEN weight_fetal_percentile = 'not_applicable' THEN NULL
+        ELSE weight_fetal_percentile
+    END,
+	second_trimester_hematocrit = CASE
+        WHEN second_trimester_hematocrit = 'not_applicable' THEN NULL
+        ELSE second_trimester_hematocrit
+    END,
+	third_trimester_hematocrit = CASE
+        WHEN third_trimester_hematocrit = 'not_applicable' THEN NULL
+        ELSE third_trimester_hematocrit
+    END,
+	second_trimester_hemoglobin = CASE
+        WHEN second_trimester_hemoglobin = 'not_applicable' THEN NULL
+        ELSE second_trimester_hemoglobin
+    END,
+	third_trimester_hemoglobin = CASE
+        WHEN third_trimester_hemoglobin = 'not_applicable' THEN NULL
+        ELSE third_trimester_hemoglobin
+    END,
+	second_tri_fasting_blood_glucose = CASE
+        WHEN second_tri_fasting_blood_glucose = 'not_applicable' THEN NULL
+        ELSE second_tri_fasting_blood_glucose
+    END,
+	third_tri_fasting_blood_glucose = CASE
+        WHEN third_tri_fasting_blood_glucose = 'not_applicable' THEN NULL
+        ELSE third_tri_fasting_blood_glucose
+    END,
+     "1st_hour_ogtt75_1st_tri"	 = CASE
+        WHEN "1st_hour_ogtt75_1st_tri"= 'not_applicable' THEN NULL
+        ELSE "1st_hour_ogtt75_1st_tri"
+    END,
+	"1st_hour_ogtt75_2tri" = CASE
+        WHEN "1st_hour_ogtt75_2tri" = 'not_applicable' THEN NULL
+        ELSE "1st_hour_ogtt75_2tri"
+    END,
+	"1st_hour_ogtt75_3tri" = CASE
+        WHEN "1st_hour_ogtt75_3tri" = 'not_applicable' THEN NULL
+        ELSE "1st_hour_ogtt75_3tri"
+    END,
+	"2nd_hour_ogtt_1tri" = CASE
+        WHEN "2nd_hour_ogtt_1tri" = 'not_applicable' THEN NULL
+        ELSE "2nd_hour_ogtt_1tri"
+    END,
+	"2nd_hour_ogtt75_2tri" = CASE
+        WHEN "2nd_hour_ogtt75_2tri" = 'not_applicable' THEN NULL
+        ELSE "2nd_hour_ogtt75_2tri"
+    END,
+	"2nd_hour_ogtt_3tri" = CASE
+        WHEN "2nd_hour_ogtt_3tri" = 'not_applicable' THEN NULL
+        ELSE "2nd_hour_ogtt_3tri"
+    END,
+	hiv_1tri = CASE
+        WHEN hiv_1tri = 'not_applicable' THEN NULL
+        ELSE hiv_1tri
+    END,
+	syphilis_1tri = CASE
+        WHEN syphilis_1tri = 'not_applicable' THEN NULL
+        ELSE syphilis_1tri
+    END,
+	c_hepatitis_1tri = CASE
+        WHEN c_hepatitis_1tri = 'not_applicable' THEN NULL
+        ELSE c_hepatitis_1tri
+    END;
+
+--Fetch all the columns from "lab_readings" table
+select * from lab_readings;
+
+-------Change the Data type for table Lab_readings table-------------
+ALTER TABLE lab_readings
+ALTER COLUMN "﻿case_id" TYPE integer USING "﻿case_id"::integer,
+ALTER COLUMN gestational_age_at_inclusion TYPE numeric USING gestational_age_at_inclusion::numeric,
+ALTER COLUMN fetal_weight_at_ultrasound TYPE varchar USING fetal_weight_at_ultrasound::varchar,
+ALTER COLUMN weight_fetal_percentile TYPE int USING weight_fetal_percentile::int,
+ALTER COLUMN right_systolic_blood_pressure TYPE int USING right_systolic_blood_pressure::int,
+ALTER COLUMN right_diastolic_blood_pressure TYPE int USING right_diastolic_blood_pressure::int,
+ALTER COLUMN left_systolic_blood_pressure TYPE int USING left_systolic_blood_pressure::int,
+ALTER COLUMN left_diastolic_blood_pressure TYPE int USING left_diastolic_blood_pressure::int,
+ALTER COLUMN first_trimester_hematocrit TYPE numeric USING first_trimester_hematocrit::numeric,
+ALTER COLUMN second_trimester_hematocrit TYPE numeric USING second_trimester_hematocrit::numeric,
+ALTER COLUMN third_trimester_hematocrit TYPE numeric USING third_trimester_hematocrit::numeric,
+ALTER COLUMN firt_trimester_hemoglobin TYPE numeric USING firt_trimester_hemoglobin::numeric,
+ALTER COLUMN second_trimester_hemoglobin TYPE numeric USING second_trimester_hemoglobin::numeric,
+ALTER COLUMN third_trimester_hemoglobin TYPE numeric USING third_trimester_hemoglobin::numeric,
+ALTER COLUMN first_tri_fasting_blood_glucose TYPE int USING first_tri_fasting_blood_glucose::int,
+ALTER COLUMN second_tri_fasting_blood_glucose TYPE int USING second_tri_fasting_blood_glucose::int,
+ALTER COLUMN third_tri_fasting_blood_glucose TYPE int USING third_tri_fasting_blood_glucose::int,
+ALTER COLUMN "1st_hour_ogtt75_1st_tri" TYPE int USING "1st_hour_ogtt75_1st_tri"::int,
+ALTER COLUMN "1st_hour_ogtt75_2tri" TYPE int USING "1st_hour_ogtt75_2tri"::int,
+ALTER COLUMN "1st_hour_ogtt75_3tri" TYPE int USING "1st_hour_ogtt75_3tri" ::int,
+ALTER COLUMN "2nd_hour_ogtt_1tri" TYPE int USING "2nd_hour_ogtt_1tri"::int,
+ALTER COLUMN "2nd_hour_ogtt75_2tri" TYPE int USING "2nd_hour_ogtt75_2tri"::int,
+ALTER COLUMN "2nd_hour_ogtt_3tri" TYPE int USING "2nd_hour_ogtt_3tri"::int,
+ALTER COLUMN hiv_1tri TYPE smallint USING hiv_1tri::smallint,
+ALTER COLUMN syphilis_1tri TYPE smallint USING syphilis_1tri::smallint,
+ALTER COLUMN c_hepatitis_1tri TYPE smallint USING c_hepatitis_1tri::smallint;
+-------------------------------------------------------------------------------------
+---Create New Column Mean SBP for Lab_readings
+ALTER TABLE lab_readings
+ADD COLUMN mean_SBP NUMERIC;
+UPDATE lab_readings
+SET mean_SBP = (right_systolic_blood_pressure + left_systolic_blood_pressure) / 2;
+--------------------------------------------------------------------------
+---Create New Column Mean DBP for Lab_readings
+ALTER TABLE lab_readings
+ADD COLUMN mean_DBP NUMERIC;
+
+UPDATE lab_readings
+SET mean_DBP = (right_diastolic_blood_pressure + left_diastolic_blood_pressure) / 2;
+
+--Fetch all the columns from "lab_readings" table
+select * from lab_readings;
+--##################################################################################
+--------------DATA TRANSFORMATION STEPS FOR "nutrition" TABLE---------------------
+--##################################################################################
+-----Change data types in nutrition table
+ALTER TABLE nutrition
+ALTER COLUMN "﻿case_id" TYPE integer USING "﻿case_id"::integer,
+ALTER COLUMN breakfast_meal TYPE smallint USING breakfast_meal::smallint,
+ALTER COLUMN morning_snack TYPE smallint USING morning_snack::smallint,
+ALTER COLUMN lunch_meal TYPE smallint USING lunch_meal::smallint,
+ALTER COLUMN afternoon_snack TYPE smallint USING afternoon_snack::smallint,
+ALTER COLUMN meal_dinner TYPE smallint USING meal_dinner::smallint,
+ALTER COLUMN supper_meal TYPE smallint USING supper_meal::smallint,
+ALTER COLUMN bean TYPE smallint USING bean::smallint,
+ALTER COLUMN fruits TYPE smallint USING fruits::smallint,
+ALTER COLUMN vegetables TYPE smallint USING vegetables::smallint,
+ALTER COLUMN embedded_food TYPE smallint USING embedded_food::smallint,
+ALTER COLUMN pasta TYPE smallint USING pasta::smallint,
+ALTER COLUMN cookies TYPE smallint USING cookies::smallint;
