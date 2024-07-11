@@ -1,1 +1,64 @@
 
+#### **Create a custom function that reads the CSV file extracts the headers**
+--and dynamically creates a temporary table for the data
+
+CREATE OR REPLACE FUNCTION load_csv_file(target_table text, csv_path text, col_count integer) RETURNS void AS $BODY$
+DECLARE
+    iter integer;
+    col text;
+    col_first text;
+BEGIN
+    -- Set the schema to public
+    SET SCHEMA 'public';
+	-- Create an empty temporary table
+    CREATE TABLE temp_table ();
+	
+	-- -- Add columns to the temporary table based on the col_count parameter
+    FOR iter IN 1..col_count LOOP
+        EXECUTE format('ALTER TABLE temp_table ADD COLUMN col_%s TEXT;', iter);
+    END LOOP;
+	
+	-- Load data from the CSV file into the temporary table
+    EXECUTE format('COPY temp_table FROM %L WITH DELIMITER '','' QUOTE ''"'' CSV', csv_path);
+	
+	-- Get the value of the first column in the first row
+    iter := 1;
+    col_first := (SELECT col_1 FROM temp_table LIMIT 1);
+	
+    FOR col in EXECUTE format('SELECT unnest(string_to_array(trim(temp_table::text, ''()''), '','')) FROM temp_table WHERE col_1 = %L', col_first)
+	LOOP
+	     --Dynamically update the column names based on the first row which has the column names
+         execute format('alter table temp_table rename column col_%s to "%s"', iter, col);
+         iter := iter + 1; -- Increment the iter variable
+    END LOOP;
+	
+	-- delete the first row that has column headers
+    execute format('delete from temp_table where %s = %L', col_first, col_first);
+	
+	-- Rename the temporary table name to the name given as parameter, if not blank
+    if length(target_table) > 0 then
+    execute format('alter table temp_table rename to %I', target_table);
+    end if;
+
+END;
+$BODY$ LANGUAGE plpgsql;
+
+-- change the owner of the function. Replace "postgresql" with your respective username.
+--ALTER FUNCTION load_csv_file(text, text, integer) OWNER TO postgres;
+
+-- Follow the below steps before you call the function "load_csv_file".
+--How to add a page break in your csv file. This is required to avoid Incorrect CSV file format error,
+-- while copying the csv file data into table in Postgres.
+--Step 1: Open your csv file in MS Excel. 
+--Step 2: Choose the following empty cell immediately after your last data cell, 
+--        and navigate to File > Page Layout > Breaks > Insert Page Break.
+--Step 3: Save your csv file and import it again with pgadmin.
+
+-- Call the function "load_csv_file". 
+--FUNCTION load_csv_file(target_table text, csv_path text, col_count integer)
+--Replace target_table with the desired table name,csv_path with the path to your CSV file, and col_count with the number of columns in your CSV.
+
+SELECT load_csv_file('maternal_health','C:\SAYALI\Maternal_Health_project\Data\observations.csv',115);
+
+--Use the select statement to check if all the data from source csv file is copied into the target_table.
+select * from maternal_health;
